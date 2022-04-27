@@ -6,14 +6,16 @@ S     -> XMLDECL ELEMENT.
 S     -> ELEMENT.
 XMLDECL         -> xml_open xml_ver VERNUMB xml_close.
 VERNUMB         -> NUMBER dot NUMBER.
-ELEMENT         -> EMPTYELEMENTTAG.
-ELEMENT         -> STARTTAG STARTTAG_AFTER.
-STARTTAG_AFTER  -> WORDS ENDTAG.
-STARTTAG_AFTER  -> ELEMENTS ENDTAG.
-STARTTAG        -> langle NAME rangle.
+ELEMENT         -> langle NAME E_PRIME.
+E_PRIME         -> slash_rangle.
+E_PRIME         -> rangle INNER.
+INNER           -> ENDTAG.
+INNER           -> ELEMENT ELEMENTS ENDTAG.
+INNER           -> WORDS ENDTAG.
 ENDTAG          -> langle_slash NAME rangle.
-WORDS           -> WORD WORDS.
-WORDS           -> .
+WORDS           -> WORD WORDS_PRIME.
+WORDS_PRIME     -> space WORDS.
+WORDS_PRIME     -> .
 ELEMENTS        -> ELEMENT.
 ELEMENTS        -> .
 EMPTYELEMENTTAG -> langle NAME slash_rangle.
@@ -30,17 +32,16 @@ NAMECHAR        -> colon.
 NAMECHAR        -> minus.
 NAMECHAR        -> dot.
 LETTER          -> letter.
-NUMBER          -> DIGIT DIGIT NUMBERNUMBER.
+NUMBER          -> DIGIT NUMBERNUMBER.
 NUMBERNUMBER    -> DIGIT NUMBERNUMBER.
 NUMBERNUMBER    -> .
 DIGIT           -> digit.
-WORD            -> CHAR WORDWORD.
-WORDWORD        -> CHAR WORDWORD.
-WORDWORD        -> .
-CHAR            -> leter.
+WORD            -> CHAR WORD_PRIME.
+WORD_PRIME      -> WORD.
+WORD_PRIME      -> .
+CHAR            -> letter.
 CHAR            -> digit.
 CHAR            -> underscore.
 CHAR            -> colon.
 CHAR            -> minus.
 CHAR            -> dot.
-CHAR            -> space.
