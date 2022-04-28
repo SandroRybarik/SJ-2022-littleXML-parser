@@ -142,7 +142,12 @@ function parse2(tokens) {
             'digit': ['digit'],
         },
         'ELEMENT': {
-            
+            'emptyelementtag': ['EMPTYELEMENTTAG'],
+            'langle': ['STARTTAG', 'STARTTAG_AFTER'],
+        },
+        'STARTTAG_AFTER': {
+            'char': ['WORDS', 'ENDTAG'],
+            'langle': ['ELEMENTS', 'ENDTAG'],
         }
         // ...
     }
