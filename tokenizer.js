@@ -141,15 +141,99 @@ function parse2(tokens) {
         'DIGIT': {
             'digit': ['digit'],
         },
-        'ELEMENT': {
-            'emptyelementtag': ['EMPTYELEMENTTAG'],
-            'langle': ['STARTTAG', 'STARTTAG_AFTER'],
+        'ELEMENT':{
+            'langle': ['langle','NAME','E_PRIME'],
         },
-        'STARTTAG_AFTER': {
-            'char': ['WORDS', 'ENDTAG'],
-            'langle': ['ELEMENTS', 'ENDTAG'],
-        }
-        // ...
+        'E_PRIME':{
+            'slash_rangle': ['slash_rangle'],
+            'rangle': ['rangle', 'INNER'],
+        },
+        'INNER':{
+            'dot': ['WORDS', 'ENDTAG'],
+            'minus': ['WORDS', 'ENDTAG'],
+            'colon': ['WORDS', 'ENDTAG'],
+            'underscore': ['WORDS', 'ENDTAG'],
+            'digit': ['WORDS', 'ENDTAG'],
+            'letter': ['WORDS', 'ENDTAG'],
+            'langle': ['ELEMENT', 'ELEMENTS', 'ENDTAG'],
+            'langle_slash': ['INNER', 'ENDTAG'],
+        },
+        'ENDTAG':{
+            'langle_slash': ['langle_slash', 'NAME', 'rangle'],
+        },
+        'WORDS':{
+            'dot': ['WORD', 'WORDS_PRIME'],
+            'minus': ['WORD', 'WORDS_PRIME'],
+            'colon': ['WORD', 'WORDS_PRIME'],
+            'underscore': ['WORD', 'WORDS_PRIME'],
+            'digit': ['WORD', 'WORDS_PRIME'],
+            'letter': ['WORD', 'WORDS_PRIME'],
+        },
+        'WORDS_PRIME':{
+            'space': ['space', 'WORDS'],
+            'langle_slash': [/*'epsilon'*/],
+        },
+        'ELEMENTS':{
+            'langle': ['ELEMENT'],
+            'langle_slash': [/*'epsilon'*/],
+        },
+        'NAME':{
+            'colon': ['colon', 'NAMELETTER'],
+            'underscore': ['underscore', 'NAMELETTER'],
+            'colon': ['LETTER', 'NAMELETTER'],
+        },
+        'NAMELETTER':{
+            'dot': ['NAMECHAR', 'NAMELETTERONE'],
+            'minus': ['NAMECHAR', 'NAMELETTERONE'],
+            'colon': ['NAMECHAR', 'NAMELETTERONE'],
+            'underscore': ['NAMECHAR', 'NAMELETTERONE'],
+            'digit': ['NAMECHAR', 'NAMELETTERONE'],
+            'letter': ['NAMECHAR', 'NAMELETTERONE'],
+        },
+        'NAMELETTERONE':{
+            'dot': ['NAMECHAR', 'NAMELETTERONE'],
+            'minus': ['NAMECHAR', 'NAMELETTERONE'],
+            'colon': ['NAMECHAR', 'NAMELETTERONE'],
+            'underscore': ['NAMECHAR', 'NAMELETTERONE'],
+            'digit': ['NAMECHAR', 'NAMELETTERONE'],
+            'letter': ['NAMECHAR', 'NAMELETTERONE'],
+            'slash_rangle': [/*'epsilon'*/],
+            'rangle': [/*'epsilon'*/],
+        },
+        'NAMECHAR':{
+            'dot': ['dot'],
+            'minus': ['minus'],
+            'colon': ['colon'],
+            'underscore': ['underscore'],
+            'digit': ['DIGIT'],
+            'letter': ['letter'],
+        },
+        'WORD':{
+            'dot': ['CHAR', 'WORD_PRIME'],
+            'minus': ['CHAR', 'WORD_PRIME'],
+            'colon': ['CHAR', 'WORD_PRIME'],
+            'underscore': ['CHAR', 'WORD_PRIME'],
+            'digit': ['CHAR', 'WORD_PRIME'],
+            'letter': ['CHAR', 'WORD_PRIME'],
+        },
+        'WORD_PRIME':{
+            'dot': ['WORD'],
+            'minus': ['WORD'],
+            'colon': ['WORD'],
+            'underscore': ['WORD'],
+            'digit': ['WORD'],
+            'letter': ['WORD'],
+            'space' : [/*'epsilon'*/],
+            'langle_slash': [/*'epsilon'*/],
+        },
+        'CHAR':{
+            'dot': ['dot'],
+            'minus': ['minus'],
+            'colon': ['colon'],
+            'underscore': ['underscore'],
+            'digit': ['digit'],
+            'letter': ['letter'],
+        },
     }
 
     const stack = ['S']
