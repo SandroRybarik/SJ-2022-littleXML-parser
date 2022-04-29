@@ -14,8 +14,9 @@ const TOKEN_MAP = {
 }
 
 const REGEXP_TOKEN_MAP = {
-    '^[A-Za-z]+': 'word',
-    '^[0-9]+': 'digit',
+    '^[A-Za-z]': 'letter',
+    '^[0-9]': 'digit',
+    '^[\\n\\t]': '__whitespace__',
 }
 
 const input = "<?xmlversion=2.2?>"
@@ -24,26 +25,25 @@ const input = "<?xmlversion=2.2?>"
  * 
  * @param {string} input 
  */
-function tokenize(input) {
+export function tokenize(input) {
     let position = 0;
     const tokens = [];
     let breakout = false
 
     while (position < input.length) {
         breakout = false
-        // console.log(input.substring(position))
         for (const [key, val] of [...Object.entries(TOKEN_MAP), ...Object.entries(REGEXP_TOKEN_MAP)]) {
             if (input.substring(position).startsWith(key)) {
                 tokens.push({
                     position,
                     type: val,
                 })
-                
+
                 position += key.length
                 breakout = true
                 break
             }
-            
+
             if (key.startsWith('^')) { // dealing with regex matching
                 const match = input.substring(position).match(key)
                 if (match) {
@@ -51,74 +51,26 @@ function tokenize(input) {
                         position,
                         type: val,
                     })
-                    
+
                     position += match[0].length
                     break
                 }
             }
         }
+
     }
     return tokens
 }
 
-console.log(tokenize(input))
-
-function parse(tokens) {
-    // $,dot,minus,colon,underscore,digit,letter,slash_rangle,langle,space,rangle,langle_slash,xml_close,xml_ver,xml_open
-    const table = {
-        'S': {
-            'langle': ['ELEMENT'],
-            'xml_open': ['XMLDECL', 'ELEMENT'],
-        },
-        'XMLDECL': {
-            'xml_open': ['xml_open', 'xml_ver', 'VERNUMB', 'xml_close'],
-        },
-        'VERNUMB': {
-            'digit': ['NUMBER', 'dot', 'NUMBER'],
-        },
-        'NUMBER': {
-            'digit': ['DIGIT', 'DIGIT', 'NUMBERNUMBER'],
-        },
-        'NUMBERNUMBER': {
-            'dot': ['epsilon'],
-            'digit': ['DIGIT', 'NUMBERNUMBER'],
-            'xml_close': ['epsilon'],
-        },
-        'DIGIT': {
-            'digit': ['digit'],
-        }
-        // ...
-    }
-
-    const stack = ['S'] // empty
-    let currentIndex = 0
-    let currentInput = tokens[currentIndex]['type']
-    while(stack.length !== 0) {
-        const peak = stack[stack.length - 1]
-        if (peak === currentInput) {
-            stack.pop()
-            currentIndex++
-            currentInput = tokens[currentIndex]['type']
-            console.log(stack, currentInput, peak)
-            continue
-        } else if (peak === 'epsilon') {
-            stack.pop()
-            console.log(stack, currentInput, peak)
-            continue
-        }
-
-        const pop = stack.pop()
-        const next = table[pop][currentInput]
-        if (!next) {
-            console.error("ERROR")
-            return
-        }
-        stack.push(...next.reverse())
-        console.log(stack, currentInput, peak)
-    }
+function reportStep(token, stack, message) {
+    console.log(`TOKEN( ${token} ), STACK( ${stack.join(', ')} ) -- ${message}`)
 }
 
-function parse2(tokens) {
+export function parse(tokens, originalInput) {
+
+    // Filter whitespace tokens
+    tokens = tokens.filter(t => t.type !== '__whitespace__')
+
     const table = {
         'S': {
             'langle': ['ELEMENT'],
@@ -131,7 +83,7 @@ function parse2(tokens) {
             'digit': ['NUMBER', 'dot', 'NUMBER'],
         },
         'NUMBER': {
-            'digit':  ['DIGIT', 'NUMBERNUMBER'],
+            'digit': ['DIGIT', 'NUMBERNUMBER'],
         },
         'NUMBERNUMBER': {
             'dot': [/*'epsilon'*/],
@@ -141,14 +93,14 @@ function parse2(tokens) {
         'DIGIT': {
             'digit': ['digit'],
         },
-        'ELEMENT':{
-            'langle': ['langle','NAME','E_PRIME'],
+        'ELEMENT': {
+            'langle': ['langle', 'NAME', 'E_PRIME'],
         },
-        'E_PRIME':{
+        'E_PRIME': {
             'slash_rangle': ['slash_rangle'],
             'rangle': ['rangle', 'INNER'],
         },
-        'INNER':{
+        'INNER': {
             'dot': ['WORDS', 'ENDTAG'],
             'minus': ['WORDS', 'ENDTAG'],
             'colon': ['WORDS', 'ENDTAG'],
@@ -156,12 +108,12 @@ function parse2(tokens) {
             'digit': ['WORDS', 'ENDTAG'],
             'letter': ['WORDS', 'ENDTAG'],
             'langle': ['ELEMENT', 'ELEMENTS', 'ENDTAG'],
-            'langle_slash': ['INNER', 'ENDTAG'],
+            'langle_slash': ['ENDTAG'],
         },
-        'ENDTAG':{
+        'ENDTAG': {
             'langle_slash': ['langle_slash', 'NAME', 'rangle'],
         },
-        'WORDS':{
+        'WORDS': {
             'dot': ['WORD', 'WORDS_PRIME'],
             'minus': ['WORD', 'WORDS_PRIME'],
             'colon': ['WORD', 'WORDS_PRIME'],
@@ -169,20 +121,20 @@ function parse2(tokens) {
             'digit': ['WORD', 'WORDS_PRIME'],
             'letter': ['WORD', 'WORDS_PRIME'],
         },
-        'WORDS_PRIME':{
+        'WORDS_PRIME': {
             'space': ['space', 'WORDS'],
             'langle_slash': [/*'epsilon'*/],
         },
-        'ELEMENTS':{
+        'ELEMENTS': {
             'langle': ['ELEMENT'],
             'langle_slash': [/*'epsilon'*/],
         },
-        'NAME':{
+        'NAME': {
             'colon': ['colon', 'NAMELETTER'],
             'underscore': ['underscore', 'NAMELETTER'],
-            'colon': ['LETTER', 'NAMELETTER'],
+            'letter': ['LETTER', 'NAMELETTER'],
         },
-        'NAMELETTER':{
+        'NAMELETTER': {
             'dot': ['NAMECHAR', 'NAMELETTERONE'],
             'minus': ['NAMECHAR', 'NAMELETTERONE'],
             'colon': ['NAMECHAR', 'NAMELETTERONE'],
@@ -190,7 +142,7 @@ function parse2(tokens) {
             'digit': ['NAMECHAR', 'NAMELETTERONE'],
             'letter': ['NAMECHAR', 'NAMELETTERONE'],
         },
-        'NAMELETTERONE':{
+        'NAMELETTERONE': {
             'dot': ['NAMECHAR', 'NAMELETTERONE'],
             'minus': ['NAMECHAR', 'NAMELETTERONE'],
             'colon': ['NAMECHAR', 'NAMELETTERONE'],
@@ -200,15 +152,18 @@ function parse2(tokens) {
             'slash_rangle': [/*'epsilon'*/],
             'rangle': [/*'epsilon'*/],
         },
-        'NAMECHAR':{
+        'NAMECHAR': {
             'dot': ['dot'],
             'minus': ['minus'],
             'colon': ['colon'],
             'underscore': ['underscore'],
-            'digit': ['DIGIT'],
+            'digit': ['digit'],
             'letter': ['letter'],
         },
-        'WORD':{
+        'LETTER': {
+            'letter': ['letter'],
+        },
+        'WORD': {
             'dot': ['CHAR', 'WORD_PRIME'],
             'minus': ['CHAR', 'WORD_PRIME'],
             'colon': ['CHAR', 'WORD_PRIME'],
@@ -216,17 +171,17 @@ function parse2(tokens) {
             'digit': ['CHAR', 'WORD_PRIME'],
             'letter': ['CHAR', 'WORD_PRIME'],
         },
-        'WORD_PRIME':{
+        'WORD_PRIME': {
             'dot': ['WORD'],
             'minus': ['WORD'],
             'colon': ['WORD'],
             'underscore': ['WORD'],
             'digit': ['WORD'],
             'letter': ['WORD'],
-            'space' : [/*'epsilon'*/],
+            'space': [/*'epsilon'*/],
             'langle_slash': [/*'epsilon'*/],
         },
-        'CHAR':{
+        'CHAR': {
             'dot': ['dot'],
             'minus': ['minus'],
             'colon': ['colon'],
@@ -238,22 +193,26 @@ function parse2(tokens) {
 
     const stack = ['S']
     let inpIdx = 0
+    reportStep(tokens[0]['type'], stack, 'Initial State')
     while (stack.length > 0) {
         const pop = stack.pop()
         const curr = tokens[inpIdx]['type']
-        console.log(stack, `[ ${curr} :: ${pop} ]`)
+        
+        reportStep(curr, stack, `Popped ${pop} from stack`)
         if (curr === pop) {
             inpIdx++
+            reportStep(curr, stack, `Moving on input to (${inpIdx <= tokens.length - 1 ? tokens[inpIdx]['type'] : '$'} ${inpIdx <= tokens.length - 1 ? originalInput[tokens[inpIdx]['position']] : null})`)
         }
         else if (table[pop][curr]) {
-            const toStack = [...table[pop][curr]]
-            toStack.reverse()
+            let toStack = [...table[pop][curr]]
+            toStack = toStack.reverse()
             stack.push(...toStack)
+            reportStep(curr, stack, 'Pushed to stack')
         } else {
-            console.error("ERROR")
-            return
+            reportStep(curr, stack, `Error happened (last pop = (${pop})`)
+            return 'NOT_ACCEPTED'
         }
     }
-}
 
-parse2(tokenize(input))
+    return 'ACCEPTED'
+}
