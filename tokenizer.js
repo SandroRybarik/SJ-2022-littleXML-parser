@@ -11,6 +11,10 @@ const TOKEN_MAP = {
     '_': 'underscore',
     '-': 'minus',
     '.': 'dot',
+    '{': 'curly_left',
+    '}': 'curly_right',
+    '?': 'question_mark',
+    '!': 'exclamation_mark',
 }
 
 const REGEXP_TOKEN_MAP = {
@@ -18,8 +22,6 @@ const REGEXP_TOKEN_MAP = {
     '^[0-9]': 'digit',
     '^[\\n\\t]': '__whitespace__',
 }
-
-const input = "<?xmlversion=2.2?>"
 
 /**
  * 
@@ -62,140 +64,48 @@ export function tokenize(input) {
     return tokens
 }
 
+/**
+ * 
+ * @param {{position: number, type: string}[]} tokens 
+ */
+export function lexicalRecovery(tokens) {
+    const justTypes = tokens.map(e => e.type)
+    // Case to recovery from:
+    // langle langle -> langle
+    const recoveryPositions = []
+    for (let i = 0; i < tokens.length - 1; i++) {
+        if (justTypes[i] === 'langle' && justTypes[i+1] === 'langle') {
+            console.log('RECOVERY: langle, langle -> lange')
+            recoveryPositions.push(i)
+        }
+    }
+    return tokens.filter((v, idx) => !recoveryPositions.includes(idx)) // filter out duplicates
+}
+
 function reportStep(token, stack, message) {
     console.log(`TOKEN( ${token} ), STACK( ${stack.join(', ')} ) -- ${message}`)
 }
 
-export function parse(tokens, originalInput) {
+export function parse(tokens, table, originalInput, recoveringFrom, inpIdx) {
+    if (tokens.length < 1) {
+        return 'NOT_ACCEPTED'
+    }
 
     // Filter whitespace tokens
     tokens = tokens.filter(t => t.type !== '__whitespace__')
-
-    const table = {
-        'S': {
-            'langle': ['ELEMENT'],
-            'xml_open': ['XMLDECL', 'ELEMENT'],
-        },
-        'XMLDECL': {
-            'xml_open': ['xml_open', 'xml_ver', 'VERNUMB', 'xml_close'],
-        },
-        'VERNUMB': {
-            'digit': ['NUMBER', 'dot', 'NUMBER'],
-        },
-        'NUMBER': {
-            'digit': ['DIGIT', 'NUMBERNUMBER'],
-        },
-        'NUMBERNUMBER': {
-            'dot': [/*'epsilon'*/],
-            'digit': ['DIGIT', 'NUMBERNUMBER'],
-            'xml_close': [/*'epsilon'*/],
-        },
-        'DIGIT': {
-            'digit': ['digit'],
-        },
-        'ELEMENT': {
-            'langle': ['langle', 'NAME', 'E_PRIME'],
-        },
-        'E_PRIME': {
-            'slash_rangle': ['slash_rangle'],
-            'rangle': ['rangle', 'INNER'],
-        },
-        'INNER': {
-            'dot': ['WORDS', 'ENDTAG'],
-            'minus': ['WORDS', 'ENDTAG'],
-            'colon': ['WORDS', 'ENDTAG'],
-            'underscore': ['WORDS', 'ENDTAG'],
-            'digit': ['WORDS', 'ENDTAG'],
-            'letter': ['WORDS', 'ENDTAG'],
-            'langle': ['ELEMENT', 'ELEMENTS', 'ENDTAG'],
-            'langle_slash': ['ENDTAG'],
-        },
-        'ENDTAG': {
-            'langle_slash': ['langle_slash', 'NAME', 'rangle'],
-        },
-        'WORDS': {
-            'dot': ['WORD', 'WORDS_PRIME'],
-            'minus': ['WORD', 'WORDS_PRIME'],
-            'colon': ['WORD', 'WORDS_PRIME'],
-            'underscore': ['WORD', 'WORDS_PRIME'],
-            'digit': ['WORD', 'WORDS_PRIME'],
-            'letter': ['WORD', 'WORDS_PRIME'],
-        },
-        'WORDS_PRIME': {
-            'space': ['space', 'WORDS'],
-            'langle_slash': [/*'epsilon'*/],
-        },
-        'ELEMENTS': {
-            'langle': ['ELEMENT'],
-            'langle_slash': [/*'epsilon'*/],
-        },
-        'NAME': {
-            'colon': ['colon', 'NAMELETTER'],
-            'underscore': ['underscore', 'NAMELETTER'],
-            'letter': ['LETTER', 'NAMELETTER'],
-        },
-        'NAMELETTER': {
-            'dot': ['NAMECHAR', 'NAMELETTERONE'],
-            'minus': ['NAMECHAR', 'NAMELETTERONE'],
-            'colon': ['NAMECHAR', 'NAMELETTERONE'],
-            'underscore': ['NAMECHAR', 'NAMELETTERONE'],
-            'digit': ['NAMECHAR', 'NAMELETTERONE'],
-            'letter': ['NAMECHAR', 'NAMELETTERONE'],
-        },
-        'NAMELETTERONE': {
-            'dot': ['NAMECHAR', 'NAMELETTERONE'],
-            'minus': ['NAMECHAR', 'NAMELETTERONE'],
-            'colon': ['NAMECHAR', 'NAMELETTERONE'],
-            'underscore': ['NAMECHAR', 'NAMELETTERONE'],
-            'digit': ['NAMECHAR', 'NAMELETTERONE'],
-            'letter': ['NAMECHAR', 'NAMELETTERONE'],
-            'slash_rangle': [/*'epsilon'*/],
-            'rangle': [/*'epsilon'*/],
-        },
-        'NAMECHAR': {
-            'dot': ['dot'],
-            'minus': ['minus'],
-            'colon': ['colon'],
-            'underscore': ['underscore'],
-            'digit': ['digit'],
-            'letter': ['letter'],
-        },
-        'LETTER': {
-            'letter': ['letter'],
-        },
-        'WORD': {
-            'dot': ['CHAR', 'WORD_PRIME'],
-            'minus': ['CHAR', 'WORD_PRIME'],
-            'colon': ['CHAR', 'WORD_PRIME'],
-            'underscore': ['CHAR', 'WORD_PRIME'],
-            'digit': ['CHAR', 'WORD_PRIME'],
-            'letter': ['CHAR', 'WORD_PRIME'],
-        },
-        'WORD_PRIME': {
-            'dot': ['WORD'],
-            'minus': ['WORD'],
-            'colon': ['WORD'],
-            'underscore': ['WORD'],
-            'digit': ['WORD'],
-            'letter': ['WORD'],
-            'space': [/*'epsilon'*/],
-            'langle_slash': [/*'epsilon'*/],
-        },
-        'CHAR': {
-            'dot': ['dot'],
-            'minus': ['minus'],
-            'colon': ['colon'],
-            'underscore': ['underscore'],
-            'digit': ['digit'],
-            'letter': ['letter'],
-        },
-    }
+    // Try to do lexical recovery
+    tokens = lexicalRecovery(tokens)
 
     const stack = ['S']
-    let inpIdx = 0
+    // let inpIdx = 0
     reportStep(tokens[0]['type'], stack, 'Initial State')
     while (stack.length > 0) {
         const pop = stack.pop()
+        
+        if (inpIdx >= tokens.length) {
+            return 'NOT_ACCEPTED'
+        }
+
         const curr = tokens[inpIdx]['type']
         
         reportStep(curr, stack, `Popped ${pop} from stack`)
@@ -203,13 +113,49 @@ export function parse(tokens, originalInput) {
             inpIdx++
             reportStep(curr, stack, `Moving on input to (${inpIdx <= tokens.length - 1 ? tokens[inpIdx]['type'] : '$'} ${inpIdx <= tokens.length - 1 ? originalInput[tokens[inpIdx]['position']] : null})`)
         }
-        else if (table[pop][curr]) {
+        else if (table[pop] && table[pop][curr]) {
             let toStack = [...table[pop][curr]]
             toStack = toStack.reverse()
             stack.push(...toStack)
             reportStep(curr, stack, 'Pushed to stack')
         } else {
             reportStep(curr, stack, `Error happened (last pop = (${pop})`)
+
+            let recovered = false
+            if (pop === 'S' && recoveringFrom !== 'S') { // try to recovery only from 'S'
+                const possibleNonterminals = Object.keys(table[pop])
+                
+                // Try to modify a token at that position
+                for (const pnt of possibleNonterminals) {
+                    // modify tokens
+                    let newTokens = [...tokens]
+                    newTokens[inpIdx] = { position: inpIdx, type: pnt }
+                    // try to parse it
+                    if (parse(newTokens, table, originalInput, 'S', inpIdx) === 'ACCEPTED') {
+                        console.log(`SYNTAX RECOVERY (${curr}) -> (${pnt})`)
+                        recovered = true
+                        tokens = newTokens
+                    }
+                }
+
+                // Try to prepend new token at that position
+                for (const pnt of possibleNonterminals) {
+                    // modify tokens
+                    let newTokens = [...tokens]
+                    newTokens = [{ position: inpIdx, type: pnt }, ...newTokens ]
+                    // try to parse it
+                    if (parse(newTokens, table, originalInput, 'S', inpIdx) === 'ACCEPTED') {
+                        console.log(`SYNTAX RECOVERY PREPENDED (${pnt})`)
+                        recovered = true
+                        tokens = newTokens
+                    }
+                }
+            }
+
+            if (recovered) {
+                continue
+            }
+
             return 'NOT_ACCEPTED'
         }
     }
