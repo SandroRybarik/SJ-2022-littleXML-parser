@@ -30,10 +30,11 @@ const REGEXP_TOKEN_MAP = {
 export function tokenize(input) {
     let position = 0;
     const tokens = [];
-    let breakout = false
+    
 
     while (position < input.length) {
-        breakout = false
+        let found = false
+
         for (const [key, val] of [...Object.entries(TOKEN_MAP), ...Object.entries(REGEXP_TOKEN_MAP)]) {
             if (input.substring(position).startsWith(key)) {
                 tokens.push({
@@ -42,7 +43,7 @@ export function tokenize(input) {
                 })
 
                 position += key.length
-                breakout = true
+                found = true
                 break
             }
 
@@ -55,9 +56,15 @@ export function tokenize(input) {
                     })
 
                     position += match[0].length
+                    found = true
                     break
                 }
             }
+        }
+
+        if (!found) {
+            // no token matched, error
+            throw new Error(`Failed to tokenize, unexpected token at position ${position}`)
         }
 
     }
