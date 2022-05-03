@@ -4,16 +4,19 @@ import { parse, tokenize } from './tokenizer.js'
 
 const shouldPass = [
     `<?xmlversion=1.1?><a>x</a>`,
+    '<?xmlversion=1.1?><level1><level2>aa</level2></level1>',
     '<:./>',
     '<e>aa</e>',
     '<element>a</element>',
     '<element>aa</element>',
     '<eleme_:nt>COOL</eleme_:nt>',
     '<element><x>hello world</x></element>',
+    '<?xmlversion=1.1?><a./>',
 ]
 
 const shouldNotPass = [
     '<x>ahoj<e></e></x>',
+    '<>Hi!</e>',
     '<hello>',
     'hello',
     '',
@@ -22,10 +25,12 @@ const shouldNotPass = [
 const syntacticRecovery = [
     'aversion=1.1?><a>x</a>', // replacing 'a' (letter token) -> (xml_open token)
     'version=1.1?><a>x</a>', // prepending (xml_open token)
+    '.version=1.1?><a>x</a>', // replacing '.' (dot token) -> (xml_open token)
 ];
 
 const lexicalRecovery = [
-    '<<<element/>' // replace all <<< with single <
+    '<<<element/>', // replace all <<< with single <
+    '<<level1><<level2>aa</level2></level1>', // Multiple lexical recovery from <<
 ];
 
 /**
