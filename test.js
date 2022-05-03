@@ -22,6 +22,10 @@ const shouldNotPass = [
     '',
 ]
 
+const shouldFailToTokenize = [
+    '<?xmlverssion=1.1?><a>x</a>', // tokenizer will throw exception of enexpected token
+]
+
 const syntacticRecovery = [
     'aversion=1.1?><a>x</a>', // replacing 'a' (letter token) -> (xml_open token)
     'version=1.1?><a>x</a>', // prepending (xml_open token)
@@ -41,8 +45,13 @@ const lexicalRecovery = [
 function test(inputs, assertion) {
     for (const input of inputs) {
         console.log(`\nRUNNING TEST: "${input}"\n`)
-        if (parse(tokenize(input), PARSING_TABLE, input, null, 0) !== assertion) {
-            return false
+        try {
+            if (parse(tokenize(input), PARSING_TABLE, input, null, 0) !== assertion) {
+                return false
+            }
+        } catch (e) {
+            console.log(e.toString())
+            return assertion === 'THROW'
         }
     }
 
@@ -58,6 +67,8 @@ function doTesting() {
 
     const shouldNotPassResult = test(shouldNotPass, 'NOT_ACCEPTED')
 
+    const shouldFailTokenize = test(shouldFailToTokenize, 'THROW')
+
     const syntacticRecoveryResult = test(syntacticRecovery, 'ACCEPTED')
 
     const lexicalRecoveryResult = test(lexicalRecovery, 'ACCEPTED')
@@ -65,6 +76,7 @@ function doTesting() {
     console.log('')
     console.log(`${'shouldPass'.padEnd(20, '.')} ${shouldPassResult ? 'OK' : 'FAIL'}`)
     console.log(`${'shouldNotPass'.padEnd(20, '.')} ${shouldNotPassResult ? 'OK' : 'FAIL'}`)
+    console.log(`${'shouldFailTokenize'.padEnd(20, '.')} ${shouldFailTokenize ? 'OK' : 'FAIL'}`)
     console.log(`${'syntacticRecovery'.padEnd(20, '.')} ${syntacticRecoveryResult ? 'OK' : 'FAIL'}`)
     console.log(`${'lexicalRecovery'.padEnd(20, '.')} ${lexicalRecoveryResult ? 'OK' : 'FAIL'}`)
 }
